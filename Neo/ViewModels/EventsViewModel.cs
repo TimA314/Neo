@@ -1,8 +1,8 @@
-﻿using Neo.Infrastructure.Services;
-using Neo.Models;
+﻿using Neo.Models;
+using Neo.Services;
 using System.Collections.ObjectModel;
 
-namespace Neo.Domain.Models
+namespace Neo.ViewModels
 {
     public class EventsViewModel
     {
@@ -14,29 +14,46 @@ namespace Neo.Domain.Models
             LoadEvents();
         }
 
+        public static string GetTimeAgo(DateTimeOffset? dateTime)
+        {
+            if (!dateTime.HasValue)
+                return string.Empty;
+
+            var timeSpan = DateTime.UtcNow - dateTime;
+            if (timeSpan?.TotalSeconds < 5)
+                return "just now";
+            if (timeSpan?.TotalSeconds < 60)
+                return $"{(int)timeSpan?.TotalSeconds} seconds ago";
+            if (timeSpan?.TotalMinutes < 60)
+                return $"{(int)timeSpan?.TotalMinutes} minutes ago";
+            if (timeSpan?.TotalHours < 24)
+                return $"{(int)timeSpan?.TotalHours} hours ago";
+            return $"{(int)timeSpan?.TotalDays} days ago";
+        }
+
         private async void LoadEvents()
         {
             var filter = new
             {
                 kinds = new[] { 1 },
-                limit = 10,
+                limit = 100,
             };
 
             EventService eventService = new EventService("my-subscription-id", filter);
-            var events = await eventService.GetEventsAsync();
-            foreach (var newEvent in events)
+            _ = eventService.ListenForEventsAsync(newEvent =>
             {
-                Events.Add(new EventDisplayModel
+                MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    Id = newEvent.Id,
-                    AuthorPublicKey = newEvent.PublicKey,
-                    CreatedAt = newEvent.CreatedAt.HasValue ? newEvent.CreatedAt.Value.UtcDateTime : DateTime.MinValue,
-                    Content = newEvent.Content,
-                    Images = new List<string>(),
-                    Tags = newEvent.Tags.Select(t => t.TagIdentifier).ToList()
-
+                    Events.Add(new EventDisplayModel
+                    {
+                        Id = newEvent.Id,
+                        AuthorPublicKey = newEvent.PublicKey,
+                        CreatedAt = GetTimeAgo(newEvent.CreatedAt),
+                        Content = newEvent.Content,
+                        // Add other properties as needed
+                    });
                 });
-            }
+            });
         }
     }
 }

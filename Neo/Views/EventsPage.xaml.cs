@@ -1,4 +1,4 @@
-﻿using Neo.Domain.Models;
+﻿using Neo.ViewModels;
 
 namespace Neo.Views
 {

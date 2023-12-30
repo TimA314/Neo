@@ -1,7 +1,7 @@
 ﻿using NostrNetTools.Nostr.Connections;
 using NostrNetTools.Nostr.Events;
 
-namespace Neo.Infrastructure.Services
+namespace Neo.Services
 {
     public class EventService
     {
@@ -19,7 +19,7 @@ namespace Neo.Infrastructure.Services
             ];
         }
 
-        public async Task<List<NostrEvent>> GetEventsAsync()
+        public async Task<List<NostrEvent>> GetEvents()
         {
             List<NostrEvent> events = [];
             int eoseCount = 0;
@@ -54,6 +54,32 @@ namespace Neo.Infrastructure.Services
             }
 
             return events;
+        }
+
+        public async Task ListenForEventsAsync(Action<NostrEvent> onEventReceived)
+        {
+            var pool = new Pool(_relays, _subscriptionId, _subscriptionFilter);
+            try
+            {
+                pool.EventsReceived += (sender, e) =>
+                {
+                    foreach (var evt in e.events)
+                    {
+                        onEventReceived?.Invoke(evt);
+                    }
+                };
+
+                await pool.ConnectAndSubscribeAsync();
+                // You may still want to handle the EOSE or implement a timeout logic
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+            finally
+            {
+                await pool.DisconnectAsync();
+            }
         }
     }
 }

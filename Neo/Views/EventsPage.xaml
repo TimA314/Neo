@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Neo.ViewModels"
              x:Class="Neo.Views.EventsPage"
              Title="Events">
 
-    <CollectionView ItemsSource="{Binding EventItems}">
+    <CollectionView ItemsSource="{Binding Events}">
         <CollectionView.ItemTemplate>
             <DataTemplate>
                 <Frame Padding="10" Margin="10" CornerRadius="10" BorderColor="LightGray" HasShadow="True">
                     <StackLayout>
+                        <!-- Author's Public Key -->
+                        <Label Text="{Binding AuthorPublicKey}" FontSize="Small" TextColor="Gray"/>
+
+                        <!-- Note Content -->
                         <Label Text="{Binding Content}" FontSize="Medium" />
-                        <!-- Add other properties of EventDisplayModel you wish to display -->
+
+                        <!-- Time Ago -->
+                        <Label Text="{Binding CreatedAt}" FontSize="Small" TextColor="Gray" HorizontalOptions="End"/>
                     </StackLayout>
                 </Frame>
             </DataTemplate>
         </CollectionView.ItemTemplate>
     </CollectionView>
+
 
 </ContentPage>
