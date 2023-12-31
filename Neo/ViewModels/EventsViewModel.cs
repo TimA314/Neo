@@ -1,6 +1,7 @@
 ﻿using Neo.Models;
 using Neo.Services;
 using Neo.Utilities;
+using NostrNetTools.Nostr.Keys;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -62,8 +63,9 @@ namespace Neo.ViewModels
                     Content = newEvent.Content,
                 });
 
-                if (_noteBatch.Count >= BatchSize)
+                if (_noteBatch.Count >= BatchSize || _noteBatch.Count >= 200)
                 {
+                    BatchSize += 25;
                     MainThread.BeginInvokeOnMainThread(() =>
                     {
                         _ = FetchAndUpdateProfiles();

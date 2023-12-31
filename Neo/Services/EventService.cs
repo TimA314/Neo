@@ -19,7 +19,8 @@ namespace Neo.Services
             _relays = [
                 new Uri("wss://nos.lol"),
                 new Uri("wss://nostr.kungfu-g.rip"),
-                new Uri("wss://purplepag.es")
+                new Uri("wss://purplepag.es"),
+                new Uri("wss://relay.nostr.band"),
             ];
 
             _pool = new Pool(_relays);

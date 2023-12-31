@@ -9,15 +9,37 @@
         <CollectionView.ItemTemplate>
             <DataTemplate>
                 <Frame Padding="10" Margin="10" CornerRadius="10" BorderColor="LightGray" HasShadow="True">
-                    <StackLayout>
-                        <Image Source="{Binding ProfileImage}" HeightRequest="50" WidthRequest="50" Aspect="AspectFill" />
-                        <Label Text="{Binding DisplayName}" FontSize="Title" TextColor="Gray"/>
-                        <Label Text="{Binding AuthorPublicKey}" FontSize="Small" TextColor="Gray"/>
-                        
-                        <Label Text="{Binding Content}" FontSize="Medium" />
+                    <Grid ColumnSpacing="10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <Label Text="{Binding CreatedAt}" FontSize="Small" TextColor="Gray" HorizontalOptions="End"/>
-                    </StackLayout>
+                        <!-- Avatar Image -->
+                        <Image Source="{Binding ProfileImage}" HeightRequest="50" WidthRequest="50"
+                               Aspect="AspectFill" Grid.Column="0" HorizontalOptions="Start"/>
+
+                        <StackLayout Grid.Column="1">
+                            <!-- Name and AuthorPublicKey -->
+                            <StackLayout Orientation="Horizontal" Spacing="5">
+                                <Label Text="{Binding DisplayName}" FontSize="Title" TextColor="Gray">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer
+                                        Tapped="OnDisplayNameTapped"
+                                        CommandParameter="{Binding DisplayName}" />
+                                    </Label.GestureRecognizers>
+                                </Label>
+
+                            </StackLayout>
+
+                            <!-- Content -->
+                            <Label Text="{Binding Content}" FontSize="Medium" />
+
+                            <!-- Time Ago -->
+                            <Label Text="{Binding CreatedAt}" FontSize="Small" TextColor="Gray"
+                                   HorizontalOptions="End"/>
+                        </StackLayout>
+                    </Grid>
                 </Frame>
             </DataTemplate>
         </CollectionView.ItemTemplate>
