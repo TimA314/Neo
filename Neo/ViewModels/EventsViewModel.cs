@@ -10,15 +10,16 @@ namespace Neo.ViewModels
     public class EventsViewModel
     {
         private EventService _eventService;
-        private List<string> _pendingPublicKeys;
         private bool _isFetchingProfiles;
+        private List<Note> _noteBatch = [];
+
+
 
         public ObservableCollection<Note> Notes { get; set; }
 
         public EventsViewModel()
         {
             _eventService = new EventService("main-subscription", new { kinds = new[] { 1 } });
-            _pendingPublicKeys = new List<string>();
             Notes = new ObservableCollection<Note>();
             LoadNotes();
         }
@@ -42,7 +43,7 @@ namespace Neo.ViewModels
 
         private async void LoadNotes()
         {
-            int BatchSize = 10;
+            int BatchSize = 25;
 
             var kind1Filter = new
             {
@@ -53,25 +54,21 @@ namespace Neo.ViewModels
             EventService eventService = new("main-subscription", kind1Filter);
             _ = eventService.SubscribeToEvents(newEvent =>
             {
-                MainThread.BeginInvokeOnMainThread(() =>
+                _noteBatch.Add(new Note
                 {
-                    if (!_pendingPublicKeys.Contains(newEvent.PublicKey))
-                    {
-                        _pendingPublicKeys.Add(newEvent.PublicKey);
-                        if (_pendingPublicKeys.Count >= BatchSize)
-                        {
-                           _ = FetchAndUpdateProfiles();
-                        }
-                    }
-
-                    Notes.Add(new Note
-                    {
-                        Id = newEvent.Id,
-                        AuthorPublicKey = newEvent.PublicKey,
-                        CreatedAt = GetTimeAgo(newEvent.CreatedAt),
-                        Content = newEvent.Content,
-                    });
+                    Id = newEvent.Id,
+                    AuthorPublicKey = newEvent.PublicKey,
+                    CreatedAt = GetTimeAgo(newEvent.CreatedAt),
+                    Content = newEvent.Content,
                 });
+
+                if (_noteBatch.Count >= BatchSize)
+                {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        _ = FetchAndUpdateProfiles();
+                    });
+                }
             });
         }
 
@@ -79,10 +76,12 @@ namespace Neo.ViewModels
         {
             if (_isFetchingProfiles) return;
             _isFetchingProfiles = true;
-            var profiles = await _eventService.GetProfileDataAsync(_pendingPublicKeys);
+            List<string> pubkeys = _noteBatch.Select(b => b.AuthorPublicKey).ToList();
+            var profiles = await _eventService.GetProfileDataAsync(pubkeys);
+
             MainThread.BeginInvokeOnMainThread(() =>
             {
-                foreach (var note in Notes)
+                foreach (var note in _noteBatch)
                 {
                     try
                     {
@@ -110,14 +109,17 @@ namespace Neo.ViewModels
                         {
                             note.About = profileContent.About;
                         }
+
+                        Notes.Add(note);
                     }
                     catch (Exception e)
                     {
                         Console.WriteLine(e);
                     }
                 }
+                _noteBatch.Clear();
+                _isFetchingProfiles = false;
             });
-            _isFetchingProfiles = false;
         }
     }
 }
