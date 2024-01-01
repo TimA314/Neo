@@ -1,5 +1,5 @@
-﻿using Neo.Models;
-using Neo.Services;
+﻿using Neo.Domain.Interfaces;
+using Neo.Models;
 using Neo.Utilities;
 using NostrNetTools.Nostr.Keys;
 using System.Collections.ObjectModel;
@@ -10,17 +10,21 @@ namespace Neo.ViewModels
 {
     public class EventsViewModel
     {
-        private EventService _eventService;
+        private readonly IEventService _eventService;
         private bool _isFetchingProfiles;
         private List<Note> _noteBatch = [];
-
-
+        private readonly NostrKeyService _nostrKeyService = new();
+        private readonly object _kind1Filter = new
+        {
+            kinds = new[] { 1 },
+            limit = 100,
+        };
 
         public ObservableCollection<Note> Notes { get; set; }
 
-        public EventsViewModel()
+        public EventsViewModel(IEventService eventService)
         {
-            _eventService = new EventService("main-subscription", new { kinds = new[] { 1 } });
+            _eventService = eventService;
             Notes = new ObservableCollection<Note>();
             LoadNotes();
         }
@@ -42,23 +46,18 @@ namespace Neo.ViewModels
             return $"{(int)timeSpan?.TotalDays} days ago";
         }
 
-        private async void LoadNotes()
+        private void LoadNotes()
         {
             int BatchSize = 25;
 
-            var kind1Filter = new
-            {
-                kinds = new[] { 1 },
-                limit = 100,
-            };
-
-            EventService eventService = new("main-subscription", kind1Filter);
-            _ = eventService.SubscribeToEvents(newEvent =>
+            _ = _eventService.SubscribeToEvents((newEvent =>
             {
                 _noteBatch.Add(new Note
                 {
                     Id = newEvent.Id,
                     AuthorPublicKey = newEvent.PublicKey,
+                    AuthorNpub = _nostrKeyService.ConvertBech32ToNpub(newEvent.PublicKey),
+                    ShortAuthorNpub = ShortenPublicKey(_nostrKeyService.ConvertBech32ToNpub(newEvent.PublicKey)),
                     CreatedAt = GetTimeAgo(newEvent.CreatedAt),
                     Content = newEvent.Content,
                 });
@@ -66,12 +65,12 @@ namespace Neo.ViewModels
                 if (_noteBatch.Count >= BatchSize || _noteBatch.Count >= 200)
                 {
                     BatchSize += 25;
-                    MainThread.BeginInvokeOnMainThread(() =>
+                    MainThread.BeginInvokeOnMainThread(async () =>
                     {
-                        _ = FetchAndUpdateProfiles();
+                        await FetchAndUpdateProfiles();
                     });
                 }
-            });
+            }), "main-subscription", _kind1Filter);
         }
 
         private async Task FetchAndUpdateProfiles()
@@ -122,6 +121,13 @@ namespace Neo.ViewModels
                 _noteBatch.Clear();
                 _isFetchingProfiles = false;
             });
+        }
+
+        private string ShortenPublicKey(string publicKey)
+        {
+            if (string.IsNullOrEmpty(publicKey)) return string.Empty;
+
+            return publicKey.Length > 10 ? $"{publicKey[..6]}...{publicKey[^4..]}" : publicKey;
         }
     }
 }

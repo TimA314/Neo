@@ -8,7 +8,8 @@ namespace Neo.Views
         public EventsPage()
         {
             InitializeComponent();
-            BindingContext = new EventsViewModel();
+            var app = Application.Current as App;
+            BindingContext = app?.ServiceProvider.GetService<EventsViewModel>();
         }
 
         private async void OnDisplayNameTapped(object sender, EventArgs e)

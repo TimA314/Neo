@@ -1,4 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
+using Neo.Domain.Interfaces;
+using Neo.Infrastructure.Services;
+using Neo.ViewModels;
 
 namespace Neo
 {
@@ -15,8 +18,15 @@ namespace Neo
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
+            builder.Services.AddSingleton<IEventService, EventService>();
+            builder.Services.AddSingleton<IUserKeyService, UserKeyService>();
+
+            builder.Services.AddTransient<MainPage>();
+            builder.Services.AddTransient<EventsViewModel>();
+
+
 #if DEBUG
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();

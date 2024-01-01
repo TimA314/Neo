@@ -2,21 +2,19 @@
 {
     public partial class App : Application
     {
-        public App()
+        public IServiceProvider ServiceProvider { get; }
+
+        public App(IServiceProvider serviceProvider)
         {
             InitializeComponent();
-
-            MainPage = new AppShell();
+            ServiceProvider = serviceProvider;
+            MainPage = new NavigationPage(serviceProvider.GetService<MainPage>());
         }
 
         protected override Window CreateWindow(IActivationState activationState)
         {
-            var window = base.CreateWindow(activationState);
-
-            const int newWidth = 800;
-
-            window.Width = newWidth;
-
+            Window window = base.CreateWindow(activationState);
+            window.Width = 800;
             return window;
         }
     }

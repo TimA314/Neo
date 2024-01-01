@@ -1,32 +1,42 @@
-﻿using Neo.Views;
+﻿using Neo.Domain.Interfaces;
+using Neo.Views;
+using NostrNetTools.Nostr.Keys;
+using System.Windows.Input;
 
 namespace Neo
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
+        private readonly NostrKeyService _nostrKeyService;
+        private readonly IUserKeyService _userKeyService;
+        public ICommand LoginCommand { get; }
+        public ICommand GenerateNewKeysCommand { get; }
 
-        public MainPage()
+        public MainPage(IUserKeyService userKeyService)
         {
             InitializeComponent();
+            _nostrKeyService = new NostrKeyService();
+            _userKeyService = userKeyService;
+
+            LoginCommand = new Command(OnLoginClicked);
+            GenerateNewKeysCommand = new Command(OnGenerateNewKeysClickedAsync);
+            BindingContext = this;
         }
 
-        private async void OnViewEventsClicked(object sender, EventArgs e)
+        private void OnGenerateNewKeysClickedAsync(object obj)
         {
-            await Navigation.PushAsync(new EventsPage());
+            NostrKeySet nostrKeySet = _nostrKeyService.GenerateNewKeySet();
+            _ = _userKeyService.SaveKeySet(nostrKeySet);
+            Navigation.PushAsync(new EventsPage());
         }
 
-        private void OnCounterClicked(object sender, EventArgs e)
+        private void OnLoginClicked()
         {
-            count++;
+            var privateKey = PrivateKeyEntry.Text.Trim();
+            NostrKeySet nostrKeySet = _nostrKeyService.GenerateKeySetFromNSec(privateKey);
+            _ = _userKeyService.SaveKeySet(nostrKeySet);
 
-            if (count == 1)
-                CounterBtn.Text = $"Clicked {count} time";
-            else
-                CounterBtn.Text = $"Clicked {count} times";
-
-            SemanticScreenReader.Announce(CounterBtn.Text);
+            Navigation.PushAsync(new EventsPage());
         }
     }
-
 }
