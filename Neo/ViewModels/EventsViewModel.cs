@@ -77,51 +77,58 @@ namespace Neo.ViewModels
         {
             if (_isFetchingProfiles) return;
             _isFetchingProfiles = true;
+
             List<string> pubkeys = _noteBatch.Select(b => b.AuthorPublicKey).ToList();
             var profiles = await _eventService.GetProfileDataAsync(pubkeys);
+
+            var notesToAdd = new List<Note>();
+            var imageSanitizationTasks = new Dictionary<Note, Task<string>>();
+
+            foreach (var note in _noteBatch)
+            {
+                if (profiles.TryGetValue(note.AuthorPublicKey, out var profile))
+                {
+                    var unescapedContent = Regex.Unescape(profile.Content);
+                    var profileContent = JsonSerializer.Deserialize<Profile>(unescapedContent, JsonUtil.DefaultOptions);
+                    if (profileContent == null) continue;
+
+                    note.DisplayName = profileContent.Name ?? note.DisplayName;
+                    note.Banner = profileContent.Banner ?? "";
+                    note.About = profileContent.About ?? "";
+
+                    if (!string.IsNullOrEmpty(profileContent.Picture))
+                    {
+                        // Add a task for sanitizing the image URL
+                        imageSanitizationTasks[note] = ImageSanitization.SanitizeImageUrl(profileContent.Picture);
+                    }
+                    else
+                    {
+                        note.ProfileImage = string.Empty;
+                    }
+                }
+            }
+
+            // Wait for all image sanitization tasks to complete
+            await Task.WhenAll(imageSanitizationTasks.Values);
+
+            // Update notes with sanitized image URLs
+            foreach (var pair in imageSanitizationTasks)
+            {
+                pair.Key.ProfileImage = pair.Value.Result;
+            }
 
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 foreach (var note in _noteBatch)
                 {
-                    try
-                    {
-                        var profile = profiles[note.AuthorPublicKey];
-                        if (profile is null) continue;
-                        var unescapedContent = Regex.Unescape(profile.Content);
-
-                        var profileContent = JsonSerializer.Deserialize<Profile>(unescapedContent, JsonUtil.DefaultOptions);
-
-                        if (profileContent is null) continue;
-                    
-                        if (!string.IsNullOrEmpty(profileContent.Name))
-                        {
-                            note.DisplayName = profileContent.Name;
-                        }
-                        if (!string.IsNullOrEmpty(profileContent.Picture))
-                        {
-                            note.ProfileImage = profileContent.Picture;
-                        }
-                        if (!string.IsNullOrEmpty(profileContent.Banner))
-                        {
-                            note.Banner = profileContent.Banner;
-                        }
-                        if (!string.IsNullOrEmpty(profileContent.About))
-                        {
-                            note.About = profileContent.About;
-                        }
-
-                        Notes.Add(note);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                    }
+                    Notes.Add(note);
                 }
+
                 _noteBatch.Clear();
                 _isFetchingProfiles = false;
             });
         }
+
 
         private string ShortenPublicKey(string publicKey)
         {
